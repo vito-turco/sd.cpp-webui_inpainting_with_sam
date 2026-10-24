@@ -1,9 +1,10 @@
 """sd.cpp-webui - Image to image UI"""
-
+from copy import deepcopy
 from functools import partial
-
+from sam_utils import generate_sam3_masks, on_checkbox_change, process_corrected_mask, swap_dimensions, resize_and_show
 import gradio as gr
-
+from PIL import Image
+import numpy as np
 from modules.core.cli.sdcpp_cli import img2img
 from modules.utils.image_utils import size_updater
 from modules.utils.ui_events import (
@@ -48,6 +49,7 @@ from modules.ui.performance import create_performance_ui
 from modules.ui.deprecated import create_deprecated_ui
 from modules.ui.environment import create_env_ui
 # from modules.ui.experimental import create_experimental_ui
+
 
 
 img2img_params = {}
@@ -217,23 +219,102 @@ with gr.Blocks()as img2img_block:
                 refresh_opt = gr.Button(
                     value="Refresh sd options"
                 )
+        with gr.Group():
+            # Output
+            with gr.Column(scale=1):
 
-        # Output
-        with gr.Column(scale=1):
-            with gr.Row():
-                img_inp_img2img = gr.Image(
-                    sources="upload", type="filepath"
-                )
-                inputs_map['in_img_inp'] = img_inp_img2img
-            with gr.Row():
-                with gr.Accordion(label="Mask", open=False):
-                    img_mask = gr.ImageEditor(
-                        sources="upload",
-                        type="filepath",
-                        layers=False
-                    )
-                inputs_map['in_img_mask'] = img_mask
-            with gr.Group():
+
+                with gr.Row():
+                    with gr.Accordion(label="SAM Mask Generator", open=False):
+                        sam_img_editor = gr.ImageEditor(
+                            label="Image & Mask Editor",
+                            type="numpy",
+                            sources="upload",
+                            brush=gr.Brush(
+                                colors=["#0000ff"],
+                                default_color="#0000ff",
+                                default_size=20
+                            ),
+                            eraser=gr.Eraser(default_size=20)
+                        )
+
+                        sam_prompt = gr.Textbox(
+                            label="SAM Prompt",
+                            value="object"
+                        )
+
+                        sam_generate_btn = gr.Button(
+                            "Generate SAM Masks"
+                        )
+
+                        sam_mask_selector = gr.CheckboxGroup(
+                            choices=[],
+                            label="Select masks to merge"
+                        )
+
+                        sam_status = gr.Textbox(
+                            label="Status"
+                        )
+                        invert_mask = gr.Checkbox(
+                            label="Invert mask (background ↔ foreground)",
+                            value=False
+                        )
+                        sam_extract_btn = gr.Button(
+                            "Extract Final Mask"
+                        )
+
+                        final_mask_preview = gr.Image(
+                            label="Final Mask",
+                            type="filepath",
+                            # sources=[],
+                            visible=False
+                        )
+                        with gr.Row():
+                            img_inp_img2img = gr.Image(
+                                sources="upload", type="filepath", visible=False,
+                            )
+
+                        gr.Markdown("### Resize image and mask")
+
+                        with gr.Row():
+                            with gr.Group():
+                                width_input = gr.Number(
+                                    label="Width",
+                                    minimum=0,
+                                    maximum=4096,
+                                    value=config.get('def_width'),
+                                    step=64,
+                                    precision=0,
+                                    interactive=True
+                                )
+
+                                height_input = gr.Number(
+                                    label="Height",
+                                    minimum=0,
+                                    maximum=4096,
+                                    value=config.get('def_height'),
+                                    step=64,
+                                    precision=0,
+                                    interactive=True
+                                )
+
+
+                        with gr.Row():
+                            btn_swap = gr.Button("🔄 Swap dimensions (w ↔ h)")
+                            btn_resize = gr.Button("📐 Resize and Show", variant="primary")
+
+                        with gr.Row():
+                            output_img = gr.Image(label="Resized Image", type="filepath", sources=[], interactive=False)
+                            output_mask = gr.Image(label="Resized Mask", type="filepath", sources=[], interactive=False)
+                            inputs_map['in_img_inp'] = output_img
+                            inputs_map['in_img_mask'] = output_mask
+                    with gr.Accordion(label="Standar pipeline", open=False):
+                        with gr.Row():
+                            output_img_ = gr.Image(label="Input Image", type="filepath", sources="upload", interactive=True)
+                            output_mask_ = gr.Image(label="Input Mask", type="filepath", sources="upload", interactive=True)
+                            inputs_map['in_img_inp'] = output_img_
+                            inputs_map['in_img_mask'] = output_mask_
+
                 with gr.Row():
                     gen_btn = gr.Button(
                         value="Generate", size="lg",
@@ -287,6 +368,10 @@ with gr.Blocks()as img2img_block:
                         interactive=False,
                         buttons=['copy'],
                     )
+
+
+
+
 
     ordered_keys, ordered_components = get_ordered_inputs(inputs_map)
 
@@ -396,14 +481,75 @@ with gr.Blocks()as img2img_block:
         outputs=cfg_comp
     )
 
-    img_inp_img2img.change(
-        size_updater,
-        inputs=img_inp_img2img,
+
+
+    sam_generate_btn.click(
+        fn=generate_sam3_masks,
+        inputs=[sam_img_editor, sam_prompt],
         outputs=[
-            generation_settings_ui['in_width'],
-            generation_settings_ui['in_height']
+            sam_img_editor,
+            sam_mask_selector,
+            sam_status
         ]
     )
+
+    sam_mask_selector.change(
+        fn=on_checkbox_change,
+        inputs=[
+            sam_mask_selector,
+            sam_img_editor
+        ],
+        outputs=sam_img_editor
+    )
+
+    btn_swap.click(
+        fn=swap_dimensions,
+        inputs=[width_input, height_input],
+        outputs=[width_input, height_input]
+    )
+
+
+    btn_resize.click(
+        fn=resize_and_show,
+        inputs=[sam_img_editor, final_mask_preview, width_input, height_input],
+        outputs=[output_img, output_mask]
+    )
+    sam_extract_btn.click(
+        fn=process_corrected_mask,
+        inputs=[
+            sam_img_editor,
+            invert_mask
+        ],
+        outputs=[
+            sam_status,
+            final_mask_preview
+        ]
+    )
+    # Resize panel -> Generation Settings
+    width_input.change(
+        fn=lambda x: int(x),
+        inputs=width_input,
+        outputs=generation_settings_ui['in_width']
+    )
+
+    height_input.change(
+        fn=lambda x: int(x),
+        inputs=height_input,
+        outputs=generation_settings_ui['in_height']
+    )
+
+    # # Generation Settings -> Resize panel
+    # generation_settings_ui['in_width'].change(
+    #     fn=lambda x: int(x),
+    #     inputs=generation_settings_ui['in_width'],
+    #     outputs=width_input
+    # )
+    #
+    # generation_settings_ui['in_height'].change(
+    #     fn=lambda x: int(x),
+    #     inputs=generation_settings_ui['in_height'],
+    #     outputs=height_input
+    # )
 
     img2img_params['pprompt'] = prompts_ui['in_pprompt']
     img2img_params['nprompt'] = prompts_ui['in_nprompt']

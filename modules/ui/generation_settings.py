@@ -72,20 +72,26 @@ def create_generation_settings_ui(unet_mode: bool = False):
     with gr.Row():
         with gr.Column():
             with gr.Group():
-                width = gr.Slider(
-                    label="Width",
-                    minimum=64,
-                    maximum=4096,
-                    value=config.get('def_width'),
-                    step=64
-                )
-                height = gr.Slider(
-                    label="Height",
-                    minimum=64,
-                    maximum=4096,
-                    value=config.get('def_height'),
-                    step=64
-                )
+                with gr.Group():
+                    width = gr.Number(
+                        label="Width",
+                        minimum=-64,
+                        maximum=4096,
+                        value=config.get('def_width'),
+                        step=64,
+                        precision=0,
+                        interactive=True
+                    )
+
+                    height = gr.Number(
+                        label="Height",
+                        minimum=-64,
+                        maximum=4096,
+                        value=config.get('def_height'),
+                        step=64,
+                        precision=0,
+                        interactive=True
+                    )
                 switch_size = gr.Button(
                     value=SWITCH_V_SYMBOL, scale=1
                 )

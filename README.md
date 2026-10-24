@@ -1,4 +1,21 @@
-# sd.cpp-webui - A Lightweight Gradio WebUI for stable-diffusion.cpp
+# sd.cpp-webui_inpainting_with_sam
+<p align="center">
+<img width="1024" height="1024"  src="assets/screenshot.png" />
+</p>
+This is a fork of **sd.cpp-webui - A Lightweight Gradio WebUI for stable-diffusion.cpp**, in which I implemented a dedicated section for generating masks using Meta’s SAM3, while also adding the option to refine these masks—or create them from scratch—using a brush tool. I’ve also kept the original interface, which allows for separate uploads of the input image and the mask, giving users the flexibility to choose their preferred workflow. 
+There is also the possibility to merge more than one mask and correct them with brush tool before extracting the final binary mask. Finally, the possibility to invert the mask (i.e. foreground->background) is included.
+
+It is just into a prototyping state right now and I tested the whole pipeline only with sd1.5 checkpoints. So  feel free to issue any bug you may encounter or suggest improvements. 
+
+A complete guide for the pipeline will soon be released at [mypage](https://vitoturco.pages.dev/projects/sd.cpp-webui_inpainting_with_sam/).
+
+The only major dependency I added is pytorch to run the segmentation with SAM.
+Moreover, you need to download SAM3 model weights and put them into the project root folder. 
+
+The license is the same as that of the original repo, with the addition of SAM's terms of use.
+
+# Original readme
+## sd.cpp-webui - A Lightweight Gradio WebUI for stable-diffusion.cpp
 
 **sd.cpp-webui** is a simple, lightweight [Gradio](https://github.com/gradio-app/gradio)-based web interface for [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp).
 

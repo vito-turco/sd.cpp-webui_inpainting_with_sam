@@ -87,35 +87,8 @@ def process_editor_mask(mask_input: Any) -> Image.Image | None:
     """
     if not mask_input:
         return None
+    return Image.open(mask_input)
 
-    if isinstance(mask_input, dict):
-        background_path = mask_input.get("background")
-        layers = mask_input.get("layers", [])
-
-        if layers and layers[0]:
-            layer_path = layers[0]
-            try:
-                layer_img = Image.open(layer_path).convert("RGBA")
-                # Check if the user actually drew anything (alpha channel > 0)
-                max_alpha = layer_img.getextrema()[3][1]
-
-                if max_alpha > 0:
-                    mask_img = Image.new("RGB", layer_img.size, "black")
-                    white_fill = Image.new("RGB", layer_img.size, "white")
-                    mask_img.paste(white_fill, mask=layer_img.split()[3])
-                    return mask_img
-
-                # No drawing strokes, fallback to background
-                if background_path:
-                    return Image.open(background_path)
-            except Exception as e:
-                print(f"Error processing mask layer: {e}")
-                if background_path:
-                    return Image.open(background_path)
-        elif background_path:
-            return Image.open(background_path)
-
-    return None
 
 
 class DiffusionMode(IntEnum):
