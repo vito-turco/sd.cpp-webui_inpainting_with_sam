@@ -50,7 +50,12 @@ from modules.ui.deprecated import create_deprecated_ui
 from modules.ui.environment import create_env_ui
 # from modules.ui.experimental import create_experimental_ui
 
-
+def load_input_image_standard_pipeline(input_img_):
+	return input_img_, None
+def check_image(img):
+	if img is not None:
+		return gr.update(interactive=True)
+	return gr.update(interactive=False)
 
 img2img_params = {}
 
@@ -92,7 +97,8 @@ with gr.Blocks()as img2img_block:
 
                 generation_settings_ui = create_generation_settings_ui()
                 inputs_map.update(generation_settings_ui)
-
+                inputs_map['in_img_inp'] = gr.Image(label="Tmp Image", type="filepath", sources=[], interactive=False, visible=False)
+                inputs_map['in_img_mask'] = gr.Image(label="Tmp mask", type="filepath", sources=[], interactive=False, visible=False)  
                 with gr.Row():
                     img_cfg_bool = gr.Checkbox(
                         label="Enable Image CFG",
@@ -306,14 +312,11 @@ with gr.Blocks()as img2img_block:
                         with gr.Row():
                             output_img = gr.Image(label="Resized Image", type="filepath", sources=[], interactive=False)
                             output_mask = gr.Image(label="Resized Mask", type="filepath", sources=[], interactive=False)
-                            inputs_map['in_img_inp'] = output_img
-                            inputs_map['in_img_mask'] = output_mask
-                    with gr.Accordion(label="Standar pipeline", open=False):
-                        with gr.Row():
-                            output_img_ = gr.Image(label="Input Image", type="filepath", sources="upload", interactive=True)
-                            output_mask_ = gr.Image(label="Input Mask", type="filepath", sources="upload", interactive=True)
-                            inputs_map['in_img_inp'] = output_img_
-                            inputs_map['in_img_mask'] = output_mask_
+
+                with gr.Accordion(label="Standard Pipeline", open=False):
+                    with gr.Row():
+                       output_img_ = gr.Image(label="Input Image", type="filepath", sources="upload", interactive=True)
+                       output_mask_ = gr.Image(label="Input Mask", type="filepath", sources="upload", interactive=False)
 
                 with gr.Row():
                     gen_btn = gr.Button(
@@ -537,19 +540,43 @@ with gr.Blocks()as img2img_block:
         inputs=height_input,
         outputs=generation_settings_ui['in_height']
     )
+	
+    output_img_.upload(
+    fn=check_image,
+    inputs=output_img_,
+    outputs=output_mask_	
+    )
 
-    # # Generation Settings -> Resize panel
-    # generation_settings_ui['in_width'].change(
-    #     fn=lambda x: int(x),
-    #     inputs=generation_settings_ui['in_width'],
-    #     outputs=width_input
-    # )
-    #
-    # generation_settings_ui['in_height'].change(
-    #     fn=lambda x: int(x),
-    #     inputs=generation_settings_ui['in_height'],
-    #     outputs=height_input
-    # )
+    output_img.change(
+        fn=lambda x: x,
+        inputs=output_img,
+        outputs=inputs_map['in_img_inp'])
+    output_img_.input(
+        fn=load_input_image_standard_pipeline,
+        inputs=output_img_,
+        outputs=[inputs_map['in_img_inp'],inputs_map['in_img_mask']])
+    output_mask.change(
+        fn=lambda x: x,
+        inputs=output_mask,
+        outputs=inputs_map['in_img_mask'])
+    output_mask_.input(
+        fn=lambda x: x,
+        inputs=output_mask_,
+        outputs=inputs_map['in_img_mask'])
+
+
+    # Generation Settings -> Resize panel
+   # generation_settings_ui['in_width'].change(
+    #    fn=lambda x: int(x),
+    #    inputs=generation_settings_ui['in_width'],
+    #    outputs=width_input
+    #)
+
+    #generation_settings_ui['in_height'].change(
+    #    fn=lambda x: int(x),
+    #    inputs=generation_settings_ui['in_height'],
+    #   outputs=height_input
+   # )
 
     img2img_params['pprompt'] = prompts_ui['in_pprompt']
     img2img_params['nprompt'] = prompts_ui['in_nprompt']
