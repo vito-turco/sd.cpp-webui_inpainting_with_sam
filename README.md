@@ -14,6 +14,10 @@ Moreover, you need to download SAM3 model weights and put them into the project 
 
 The license is the same as that of the original repo, with the addition of SAM's terms of use.
 
+### Future development
+* Multiclass masking with SAM3: introduce the possibility to add instances of different classes to the final binary mask.
+* Introduction of SAM3.cpp backend for consistency with the C++ backend used in the original repo, and to leverage C++'s inference speed for mask generation as well.   
+
 # Original readme
 ## sd.cpp-webui - A Lightweight Gradio WebUI for stable-diffusion.cpp
 
