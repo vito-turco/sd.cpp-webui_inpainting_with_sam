@@ -257,7 +257,23 @@ with gr.Blocks()as img2img_block:
                             choices=[],
                             label="Select masks to merge"
                         )
+                        mask_dilation = gr.Slider(
+                            label="Mask Dilation",
+                            minimum=0,
+                            maximum=50,
+                            step=1,
+                            value=10,
+                            interactive=True
+                        )
 
+                        mask_blur = gr.Slider(
+                            label="Mask Blur",
+                            minimum=0,
+                            maximum=50,
+                            step=1,
+                            value=8,
+                            interactive=True
+                        )
                         sam_status = gr.Textbox(
                             label="Status"
                         )
@@ -521,7 +537,8 @@ with gr.Blocks()as img2img_block:
         fn=process_corrected_mask,
         inputs=[
             sam_img_editor,
-            invert_mask
+            mask_dilation,
+            mask_blur
         ],
         outputs=[
             sam_status,

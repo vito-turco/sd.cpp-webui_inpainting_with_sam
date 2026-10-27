@@ -1,12 +1,11 @@
 import gradio as gr
 import numpy as np
 import torch
-from PIL import Image
 import os
 import sam3
 import gc
 import ctypes
-
+from PIL import Image, ImageFilter
 
 def free_system_memory():
     gc.collect()
@@ -156,22 +155,48 @@ def on_checkbox_change(selected_masks, input_image_editor):
     return update_editor_layers(image, selected_masks)
 
 
-def process_corrected_mask(editor_output, invert=False):
+def process_corrected_mask(
+    editor_output,
+    dilation_radius,
+    blur_radius
+):
     if editor_output is None or not editor_output.get("layers"):
-        return "No mask found.", None
+        return "Nessuna maschera rilevata da salvare.", None
 
     mask_layer = np.array(editor_output["layers"][0])
-    final_binary_mask = (mask_layer[:, :, 3] > 0).astype(np.uint8) * 255
 
-    if invert:
-        final_binary_mask = 255 - final_binary_mask
+    # Extract alpha channel
+    final_binary_mask = (
+        mask_layer[:, :, 3] > 0
+    ).astype(np.uint8) * 255
 
-    final_mask_result = Image.fromarray(final_binary_mask)
-    path = "/tmp/tmp_mask.png"
-    final_mask_result.save(path)
+    mask_img = Image.fromarray(final_binary_mask).convert("L")
 
-    free_system_memory()
-    return "Mask generated successfully!", path
+    # Dilation
+    if dilation_radius > 0:
+        kernel_size = dilation_radius * 2 + 1
+
+        # PIL MaxFilter acts as a mask expansion
+        if kernel_size % 2 == 0:
+            kernel_size += 1
+
+        mask_img = mask_img.filter(
+            ImageFilter.MaxFilter(kernel_size)
+        )
+
+    # Feather edges
+    if blur_radius > 0:
+        mask_img = mask_img.filter(
+            ImageFilter.GaussianBlur(radius=blur_radius)
+        )
+
+    mask_path = "/tmp/tmp_mask.png"
+    mask_img.save(mask_path)
+
+    return (
+        f"Maschera generata (dilate={dilation_radius}, blur={blur_radius})",
+        mask_path
+    )
 
 
 def swap_dimensions(w, h):
