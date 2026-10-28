@@ -538,7 +538,8 @@ with gr.Blocks()as img2img_block:
         inputs=[
             sam_img_editor,
             mask_dilation,
-            mask_blur
+            mask_blur,
+            invert_mask
         ],
         outputs=[
             sam_status,

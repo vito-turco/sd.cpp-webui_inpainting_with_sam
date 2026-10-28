@@ -158,10 +158,11 @@ def on_checkbox_change(selected_masks, input_image_editor):
 def process_corrected_mask(
     editor_output,
     dilation_radius,
-    blur_radius
+    blur_radius,
+    invert=False
 ):
     if editor_output is None or not editor_output.get("layers"):
-        return "Nessuna maschera rilevata da salvare.", None
+        return "No mask found.", None
 
     mask_layer = np.array(editor_output["layers"][0])
 
@@ -169,6 +170,9 @@ def process_corrected_mask(
     final_binary_mask = (
         mask_layer[:, :, 3] > 0
     ).astype(np.uint8) * 255
+
+    if invert:
+        final_binary_mask = 255 - final_binary_mask
 
     mask_img = Image.fromarray(final_binary_mask).convert("L")
 
@@ -194,7 +198,7 @@ def process_corrected_mask(
     mask_img.save(mask_path)
 
     return (
-        f"Maschera generata (dilate={dilation_radius}, blur={blur_radius})",
+        f"Mask generated (dilate={dilation_radius}, blur={blur_radius})",
         mask_path
     )
 
